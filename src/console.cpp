@@ -33,6 +33,7 @@ static int _puts(const WCHAR *const text)
 		DWORD written;
 		if (WriteFile(g_stdout, g_buffer_utf8, len, &written, NULL))
 		{
+			FlushFileBuffers(g_stdout);
 			return len;
 		}
 	}

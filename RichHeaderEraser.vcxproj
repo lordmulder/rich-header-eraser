@@ -78,6 +78,11 @@
       <EntryPointSymbol>startup</EntryPointSymbol>
       <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy /Y "$(TargetPath)" "$(IntDir)~$(TargetName)$(TargetExt)"
+"$(TargetPath)" "$(IntDir)~$(TargetName)$(TargetExt)"
+move /Y "$(IntDir)~$(TargetName)$(TargetExt)" "$(TargetPath)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -107,6 +112,11 @@
       <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
+    <PostBuildEvent>
+      <Command>copy /Y "$(TargetPath)" "$(IntDir)~$(TargetName)$(TargetExt)"
+"$(TargetPath)" "$(IntDir)~$(TargetName)$(TargetExt)"
+move /Y "$(IntDir)~$(TargetName)$(TargetExt)" "$(TargetPath)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

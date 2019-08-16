@@ -12,11 +12,18 @@
 static const DWORD BUFFSIZE = 32U;
 typedef BOOLEAN (__stdcall *gen_random_t)(PVOID buffer, ULONG len);
 
+static DWORD g_rand_seed = 0;
 static HMODULE g_advapi32 = NULL;
 static gen_random_t g_gen_rand = NULL;
 static CRITICAL_SECTION g_mutex;
 static BYTE g_buffer[BUFFSIZE];
 static DWORD g_offset = BUFFSIZE;
+
+static DWORD lcg(void)
+{
+	static const DWORD RAND_MAX = (1U << 31) - 1U;
+	return g_rand_seed = (g_rand_seed * 1103515245U + 12345U) & RAND_MAX;
+}
 
 static BYTE _rnd_next(void)
 {
@@ -31,7 +38,7 @@ static BYTE _rnd_next(void)
 	}
 	else
 	{
-		return 0U;
+		return (BYTE)lcg(); /*fallback*/
 	}
 }
 
