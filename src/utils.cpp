@@ -9,6 +9,25 @@
 
 #include "utils.h"
 
+#define DELAY_BY(X) do { if ((X) > 0U) { Sleep((X)); } } while(0)
+
+HANDLE open_file(const WCHAR *const file_name, const DWORD access_flags, const DWORD creation_flags, DWORD *const error)
+{
+	HANDLE handle = NULL;
+	*error = 0U;
+	for (DWORD retry = 0; retry < 72; ++retry)
+	{
+		DELAY_BY(retry);
+		handle = CreateFileW(file_name, access_flags, FILE_SHARE_READ, NULL, creation_flags, FILE_ATTRIBUTE_NORMAL, NULL);
+		*error = GetLastError();
+		if ((handle != INVALID_HANDLE_VALUE) || ((retry > 0U) && ((*error == ERROR_FILE_NOT_FOUND) || (*error == ERROR_PATH_NOT_FOUND))))
+		{
+			break;
+		}
+	}
+	return handle;
+}
+
 WCHAR *get_error_message(const DWORD error)
 {
 	WCHAR *buffer = NULL;
@@ -22,24 +41,4 @@ WCHAR *get_error_message(const DWORD error)
 		return buffer;
 	}
 	return NULL;
-}
-
-HANDLE open_file(const WCHAR *const file_name, DWORD *const error)
-{
-	HANDLE handle = NULL;
-	*error = 0U;
-	for (DWORD retry = 0; retry < 80; ++retry)
-	{
-		if (retry > 0U)
-		{
-			Sleep(retry);
-		}
-		handle = CreateFileW(file_name, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0U, NULL);
-		*error = GetLastError();
-		if ((handle != INVALID_HANDLE_VALUE) || ((retry > 0U) && ((*error == 0x2) || (*error == 0x3))))
-		{
-			break;
-		}
-	}
-	return handle;
 }

@@ -66,23 +66,20 @@ static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 	}
 	else if (argc > 2)
 	{
-		puts(L"Warning: Excess command-line argument was ignroed!\n\n");
+		puts(L"Warning: Excess command-line argument was ignored!\n\n");
 	}
 
 	puts(L"Mapping binary file into memory... ");
 
 	DWORD error = 0U;
-	const HANDLE file = open_file(argv[1], &error);
+	const HANDLE file = open_file(argv[1], GENERIC_READ | GENERIC_WRITE, OPEN_EXISTING, &error);
 	if (file == INVALID_HANDLE_VALUE)
 	{
 		printf(L"Failed!\n\nSpecified file could *not* be opened for reading/writing:\n%s\n\n", argv[1]);
-		if (error != 0U)
+		if(WCHAR *const messsage = get_error_message(error))
 		{
-			if(WCHAR *const messsage = get_error_message(error))
-			{
-				printf(L"%s\n\n", messsage);
-				LocalFree((HLOCAL)messsage);
-			}
+			printf(L"%s\n\n", messsage);
+			LocalFree((HLOCAL)messsage);
 		}
 		return 2;
 	}

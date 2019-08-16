@@ -10,5 +10,5 @@
 #define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
 
+HANDLE open_file(const WCHAR *const file_name, const DWORD access_flags, const DWORD creation_flags, DWORD *const error);
 WCHAR *get_error_message(const DWORD error);
-HANDLE open_file(const WCHAR *const file_name, DWORD *const error);
