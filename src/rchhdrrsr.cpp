@@ -128,10 +128,10 @@ static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 	DWORD rich_header = 0U;
 	if (!locate_rich_header(mapping.view, rich_footer, &rich_header))
 	{
-		puts(L"Failed!\n\nFound possible Rich header, but 'DanS' signature could *not* be decoded!\n\n");
+		puts(L"Failed!\n\nFound a Rich header, but 'DanS' signature could *not* be decoded!\n\n");
 		destroy_mapping(&mapping);
 		CloseHandle(file);
-		return 5;
+		return 7;
 	}
 
 	printf(L"OK\nErasing 0x%04X to 0x%04X... ", rich_header, rich_footer + 7U);

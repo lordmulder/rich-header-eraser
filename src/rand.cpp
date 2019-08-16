@@ -25,6 +25,13 @@ static DWORD lcg(void)
 	return g_rand_seed = (g_rand_seed * 1103515245U + 12345U) & RAND_MAX;
 }
 
+static DWORD init_seed(void)
+{
+	FILETIME time;
+	GetSystemTimeAsFileTime(&time);
+	return time.dwLowDateTime ^ time.dwHighDateTime;
+}
+
 static BYTE _rnd_next(void)
 {
 	if(g_gen_rand)
@@ -53,6 +60,7 @@ BYTE rnd_next(void)
 
 void rnd_init(void)
 {
+	g_rand_seed = init_seed();
 	if(g_advapi32 = LoadLibraryW(L"advapi32.dll"))
 	{
 		g_gen_rand = (gen_random_t) GetProcAddress(g_advapi32, "SystemFunction036");
