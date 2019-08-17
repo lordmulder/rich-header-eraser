@@ -11,10 +11,11 @@
 #include "mmio.h"
 #include "rand.h"
 #include "utils.h"
+#include "version.h"
 
-static const unsigned VERSION_MAJOR = 1U;
-static const unsigned VERSION_MINOR = 0U;
-static const unsigned VERSION_PATCH = 1U;
+static const WORD VERSION_MAJOR = VER_RCHHDRRSR_MAJOR;
+static const WORD VERSION_MINOR = (10U * VER_RCHHDRRSR_MINOR_HI) + VER_RCHHDRRSR_MINOR_LO;
+static const WORD VERSION_PATCH = VER_RCHHDRRSR_PATCH;
 
 static const DWORD DOS_STUB_LEN = 0x80;
 

@@ -23,6 +23,13 @@
     <ClInclude Include="src\mmio.h" />
     <ClInclude Include="src\rand.h" />
     <ClInclude Include="src\utils.h" />
+    <ClInclude Include="src\version.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="RichHeaderEraser.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="res\compat.manifest" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{39BBDD58-A187-40E2-9F9E-6011E8668AD4}</ProjectGuid>
