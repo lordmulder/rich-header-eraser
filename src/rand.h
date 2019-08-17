@@ -10,6 +10,7 @@
 #define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
 
-BYTE rnd_next(void);
+BYTE  rnd_next_byte(void);
+DWORD rnd_next_word(void);
+
 void rnd_init(void);
-void rnd_exit(void);
