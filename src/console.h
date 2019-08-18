@@ -10,8 +10,8 @@
 #define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
 
-int puts(const WCHAR *const text);
-int printf(const WCHAR *const format, ...);
+int con_puts(const WCHAR *const text);
+int con_printf(const WCHAR *const format, ...);
 
 void con_init(void);
 void con_exit(void);

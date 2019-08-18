@@ -25,7 +25,7 @@ static DWORD utf16_to_utf8(const WCHAR *const input, char *const output, const D
 	return ((result > 0U) && (result <= out_size)) ? result - 1U : 0U;
 }
 
-static int _puts(const WCHAR *const text)
+static int _con_puts(const WCHAR *const text)
 {
 	const DWORD len = utf16_to_utf8(text, g_buffer_utf8, BUFFSIZE_UTF8);
 	if (len > 0U)
@@ -40,32 +40,32 @@ static int _puts(const WCHAR *const text)
 	return 0U;
 }
 
-static int _printf(const WCHAR *const format, const va_list args)
+static int _con_printf(const WCHAR *const format, const va_list args)
 {
 	const int result = wvnsprintfW(g_buffer_utf16, BUFFSIZE_UTF16, format, args);
 	if (result > 0)
 	{
-		return _puts(g_buffer_utf16);
+		return _con_puts(g_buffer_utf16);
 	}
 	return 0U;
 }
 
-int puts(const WCHAR *const text)
+int con_puts(const WCHAR *const text)
 {
 	int retval;
 	EnterCriticalSection(&g_mutex);
-	retval = _puts(text);
+	retval = _con_puts(text);
 	LeaveCriticalSection(&g_mutex);
 	return retval;
 }
 
-int printf(const WCHAR *const format, ...)
+int con_printf(const WCHAR *const format, ...)
 {
 	va_list ap;
 	int retval;
 	EnterCriticalSection(&g_mutex);
 	va_start(ap, format);
-	retval = _printf(format, ap);
+	retval = _con_printf(format, ap);
 	va_end(ap);
 	LeaveCriticalSection(&g_mutex);
 	return retval;

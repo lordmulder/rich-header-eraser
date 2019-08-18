@@ -67,11 +67,11 @@ static BOOL locate_rich_header(const BYTE *const data, const DWORD foor_offset, 
 
 static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 {
-	printf(L"Rich-Header Eraser v%u.%02u-%u [%S]\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, __DATE__);
+	con_printf(L"Rich-Header Eraser v%u.%02u-%u [%S]\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, __DATE__);
 
 	if (argc < 2)
 	{
-		puts(L"Usage:\n  rchhdrrsr.exe [--zero] <path_to_binary>\n\n");
+		con_puts(L"Usage:\n  rchhdrrsr.exe [--zero] <path_to_binary>\n\n");
 		return 1;
 	}
 
@@ -92,7 +92,7 @@ static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 				zero = TRUE;
 				continue;
 			}
-			printf(L"Error: Option \"%s\" is unknown!\n\n", argv[arg_idx]);
+			con_printf(L"Error: Option \"%s\" is unknown!\n\n", argv[arg_idx]);
 			return 2;
 		}
 		break;
@@ -100,24 +100,24 @@ static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 
 	if ((arg_idx >= argc) || (!argv[arg_idx][0U]))
 	{
-		puts(L"Error: Target file name has *not* been specified!\n\n");
+		con_puts(L"Error: Target file name has *not* been specified!\n\n");
 		return 3;
 	}
 	else if (arg_idx < argc - 1)
 	{
-		puts(L"Warning: Excess command-line argument was ignored!\n\n");
+		con_puts(L"Warning: Excess command-line argument was ignored!\n\n");
 	}
 
-	puts(L"Mapping binary file into memory... ");
+	con_puts(L"Mapping binary file into memory... ");
 
 	DWORD error = 0U;
 	const HANDLE file = open_file(argv[arg_idx], GENERIC_READ | GENERIC_WRITE, OPEN_EXISTING, &error);
 	if (file == INVALID_HANDLE_VALUE)
 	{
-		printf(L"Failed!\n\nSpecified file could *not* be opened for reading/writing:\n%s\n\n", argv[arg_idx]);
+		con_printf(L"Failed!\n\nSpecified file could *not* be opened for reading/writing:\n%s\n\n", argv[arg_idx]);
 		if(WCHAR *const messsage = get_error_message(error))
 		{
-			printf(L"%s\n\n", messsage);
+			con_printf(L"%s\n\n", messsage);
 			LocalFree((HLOCAL)messsage);
 		}
 		return 4;
@@ -126,43 +126,43 @@ static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 	mapping_t mapping;
 	if(!create_mapping(file, &mapping, 4096U))
 	{
-		puts(L"Failed!\n\nError: Failed to map file into memory!\n\n");
+		con_puts(L"Failed!\n\nError: Failed to map file into memory!\n\n");
 		CloseHandle(file);
 		return 5;
 	}
 
-	puts(L"OK\nScanning for PE header... ");
+	con_puts(L"OK\nScanning for PE header... ");
 
 	if (!check_hdr_mz(mapping.view, mapping.size))
 	{
-		puts(L"Failed!\n\nFile does *not* look like a valid EXE or DLL file!\n\n");
+		con_puts(L"Failed!\n\nFile does *not* look like a valid EXE or DLL file!\n\n");
 		CLEANUP_RETURN(6)
 	}
 
 	DWORD pe_offset = 0U;
 	if (!check_hdr_pe(mapping.view, mapping.size, &pe_offset))
 	{
-		puts(L"Failed!\n\nFile does *not* contain a proper PE format header!\n\n");
+		con_puts(L"Failed!\n\nFile does *not* contain a proper PE format header!\n\n");
 		CLEANUP_RETURN(7)
 	}
 
-	puts(L"OK\nScanning for Rich (DanS) header... ");
+	con_puts(L"OK\nScanning for Rich (DanS) header... ");
 
 	DWORD rich_footer = 0U;
 	if (!locate_rich_footer(mapping.view, pe_offset, &rich_footer))
 	{
-		puts(L"Failed!\n\nFile does *not* seem to contain Rich (DanS) header. Already erased or not created by M$?\n\n");
+		con_puts(L"Failed!\n\nFile does *not* seem to contain Rich (DanS) header. Already erased or not created by M$?\n\n");
 		CLEANUP_RETURN(8)
 	}
 
 	DWORD rich_header = 0U;
 	if (!locate_rich_header(mapping.view, rich_footer, &rich_header))
 	{
-		puts(L"Failed!\n\nFound a Rich header, but 'DanS' signature could *not* be decoded!\n\n");
+		con_puts(L"Failed!\n\nFound a Rich header, but 'DanS' signature could *not* be decoded!\n\n");
 		CLEANUP_RETURN(9)
 	}
 
-	printf(L"OK\nErasing 0x%04X to 0x%04X... ", rich_header, rich_footer + 7U);
+	con_printf(L"OK\nErasing 0x%04X to 0x%04X... ", rich_header, rich_footer + 7U);
 
 	for (DWORD off = rich_header; off < rich_footer + 8U; ++off)
 	{
@@ -172,12 +172,12 @@ static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 	FlushViewOfFile(mapping.view, mapping.size);
 	destroy_mapping(&mapping);
 
-	puts(L"OK\n\n");
+	con_puts(L"OK\n\n");
 
 	FlushFileBuffers(file);
 	CloseHandle(file);
 
-	puts(L"Completed.\n\n");
+	con_puts(L"Completed.\n\n");
 	return 0;
 }
 
