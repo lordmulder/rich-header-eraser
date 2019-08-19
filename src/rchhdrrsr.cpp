@@ -39,7 +39,7 @@ static BOOL check_hdr_mz(const BYTE *const data, const DWORD size)
 static BOOL check_hdr_pe(const BYTE *const data, const DWORD size, DWORD *const pe_offset_out)
 {
 	*pe_offset_out = data[0x3C] | (data[0x3D] << 8) | (data[0x3E] << 16) | (data[0x3E] << 24);
-	return (*pe_offset_out > DOS_STUB_LEN) && (*pe_offset_out < size - 3U) && (!memcmp(data + (*pe_offset_out), "PE\0\0", 4));
+	return (*pe_offset_out >= 0x40) && (*pe_offset_out < size - 3U) && (!memcmp(data + (*pe_offset_out), "PE\0\0", 4));
 }
 
 static BOOL locate_rich_footer(const BYTE *const data, const DWORD pe_offset, DWORD *const footer_offset_out)
@@ -224,7 +224,7 @@ static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 	}
 
 	con_puts((retval == EXIT_SUCCESS) ? L">> All header(s) have been erased succssefully.\n\n" :
-		((retval == EXIT_NO_RICH_HEADER) ? L">> No headers have been found or erased.\n\n" : L">> Exiting with I/O errors!\n\n"));
+		((retval == EXIT_NO_RICH_HEADER) ? L">> No headers have been found or erased.\n\n" : L">> Exiting with critical errors!\n\n"));
 
 	return retval;
 }
