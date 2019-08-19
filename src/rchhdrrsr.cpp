@@ -74,7 +74,9 @@ static BOOL locate_rich_header(const BYTE *const data, const DWORD foor_offset, 
 
 static int update_retval(const int retval, const int retval_new)
 {
-	return (retval < 0) ? retval_new : ((retval_new > EXIT_NO_RICH_HEADER) ? max(retval, retval_new) : min(retval, retval_new));
+	return (retval < 0) ? retval_new :
+		((retval_new > EXIT_NO_RICH_HEADER) ? max(retval, retval_new) :
+			((retval <= EXIT_NO_RICH_HEADER) ? min(retval, retval_new) : retval));
 }
 
 static int process_file(const WCHAR *const file_name, const BOOL zero)
@@ -198,7 +200,7 @@ static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 	int retval = -1;
 	for(; arg_idx < argc; ++arg_idx)
 	{
-		if(StrChrW(argv[arg_idx], L'*') || StrChrW(argv[arg_idx], L'?'))
+		if(StrPBrkW(argv[arg_idx], L"*?"))
 		{
 			glob_t glob_ctx;
 			if(WCHAR *file_name = glob_find(argv[arg_idx], &glob_ctx))
@@ -221,7 +223,9 @@ static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 		}
 	}
 
-	con_puts((retval == EXIT_SUCCESS) ? L">> All header(s) have been erased succssefully.\n\n" : ((retval == EXIT_NO_RICH_HEADER) ? L">> No headers have been found or erased.\n\n" : L">> Exiting with I/O errors!\n\n"));
+	con_puts((retval == EXIT_SUCCESS) ? L">> All header(s) have been erased succssefully.\n\n" :
+		((retval == EXIT_NO_RICH_HEADER) ? L">> No headers have been found or erased.\n\n" : L">> Exiting with I/O errors!\n\n"));
+
 	return retval;
 }
 
