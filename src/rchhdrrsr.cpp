@@ -12,12 +12,19 @@
 #include "rand.h"
 #include "utils.h"
 #include "version.h"
+#include "glob.h"
+#include <Shlwapi.h>
 
 static const WORD VERSION_MAJOR = VER_RCHHDRRSR_MAJOR;
 static const WORD VERSION_MINOR = (10U * VER_RCHHDRRSR_MINOR_HI) + VER_RCHHDRRSR_MINOR_LO;
 static const WORD VERSION_PATCH = VER_RCHHDRRSR_PATCH;
 
 static const DWORD DOS_STUB_LEN = 0x80;
+
+static const int EXIT_NO_RICH_HEADER = 1;
+static const int EXIT_INVALID_FILE   = 2;
+static const int EXIT_FILE_IO_ERROR  = 3;
+static const int EXIT_INVALID_ARGS   = 4;
 
 #define CLEANUP_RETURN(X) \
 	destroy_mapping(&mapping); \
@@ -37,13 +44,13 @@ static BOOL check_hdr_pe(const BYTE *const data, const DWORD size, DWORD *const 
 
 static BOOL locate_rich_footer(const BYTE *const data, const DWORD pe_offset, DWORD *const footer_offset_out)
 {
-	BOOL found = false;
+	BOOL found = FALSE;
 	for (DWORD off = DOS_STUB_LEN; off < pe_offset - 7U; ++off)
 	{
 		if (!memcmp(data + off, "Rich", 4))
 		{
 			*footer_offset_out = off;
-			found = true;
+			found = TRUE;
 		}
 	}
 	return found;
@@ -51,18 +58,102 @@ static BOOL locate_rich_footer(const BYTE *const data, const DWORD pe_offset, DW
 
 static BOOL locate_rich_header(const BYTE *const data, const DWORD foor_offset, DWORD *const header_offset_out)
 {
-	BOOL found = false;
+	BOOL found = FALSE;
 	for (DWORD off = foor_offset - 4U; off >= DOS_STUB_LEN; --off)
 	{
 		if (((data[off + 0U] ^ data[foor_offset + 4U]) == 'D') && ((data[off + 1U] ^ data[foor_offset + 5U]) == 'a') &&
 			((data[off + 2U] ^ data[foor_offset + 6U]) == 'n') && ((data[off + 3U] ^ data[foor_offset + 7U]) == 'S'))
 		{
 			*header_offset_out = off;
-			found = true;
+			found = TRUE;
 			break;
 		}
 	}
 	return found;
+}
+
+static int update_retval(const int retval, const int retval_new)
+{
+	return (retval < 0) ? retval_new : ((retval_new > EXIT_NO_RICH_HEADER) ? max(retval, retval_new) : min(retval, retval_new));
+}
+
+static int process_file(const WCHAR *const file_name, const BOOL zero)
+{
+	con_printf(L">> %s\n\n", file_name);
+	con_puts(L"Mapping binary file into memory... ");
+
+	DWORD error = 0U;
+	const HANDLE file = open_file(file_name, GENERIC_READ | GENERIC_WRITE, OPEN_EXISTING, &error);
+	if (file == INVALID_HANDLE_VALUE)
+	{
+		con_puts(L"Failed!\n\nSpecified file could *not* be opened for reading/writing:\n");
+		if(WCHAR *const messsage = get_error_message(error))
+		{
+			con_printf(L"%s\n\n", messsage);
+			LocalFree((HLOCAL)messsage);
+		}
+		else
+		{
+			con_puts(L"An unknown error occurred!\n\n");
+		}
+		return EXIT_FILE_IO_ERROR;
+	}
+
+	mapping_t mapping;
+	if(!create_mapping(file, &mapping, 4096U))
+	{
+		con_puts(L"Failed!\n\nError: Failed to map file into memory!\n\n");
+		CloseHandle(file);
+		return EXIT_FILE_IO_ERROR;
+	}
+
+	con_puts(L"OK\nScanning for PE header... ");
+
+	if (!check_hdr_mz(mapping.view, mapping.size))
+	{
+		con_puts(L"Failed!\n\nFile does *not* look like a valid EXE or DLL file!\n\n");
+		CLEANUP_RETURN(EXIT_INVALID_FILE)
+	}
+
+	DWORD pe_offset = 0U;
+	if (!check_hdr_pe(mapping.view, mapping.size, &pe_offset))
+	{
+		con_puts(L"Failed!\n\nFile does *not* contain a proper PE format header!\n\n");
+		CLEANUP_RETURN(EXIT_INVALID_FILE)
+	}
+
+	con_puts(L"OK\nScanning for Rich (DanS) header... ");
+
+	DWORD rich_footer = 0U;
+	if (!locate_rich_footer(mapping.view, pe_offset, &rich_footer))
+	{
+		con_puts(L"Failed!\n\nFile does *not* seem to contain Rich (DanS) header. Already erased or not created by M$?\n\n");
+		CLEANUP_RETURN(EXIT_NO_RICH_HEADER)
+	}
+
+	DWORD rich_header = 0U;
+	if (!locate_rich_header(mapping.view, rich_footer, &rich_header))
+	{
+		con_puts(L"Failed!\n\nFound a Rich header, but 'DanS' signature could *not* be decoded!\n\n");
+		CLEANUP_RETURN(EXIT_NO_RICH_HEADER)
+	}
+
+	con_printf(L"OK\nErasing 0x%04X to 0x%04X... ", rich_header, rich_footer + 7U);
+
+	for (DWORD off = rich_header; off < rich_footer + 8U; ++off)
+	{
+		mapping.view[off] = zero ? 0x00 : rnd_next_byte();
+	}
+
+	FlushViewOfFile(mapping.view, mapping.size);
+	destroy_mapping(&mapping);
+
+	con_puts(L"OK\n\n");
+
+	FlushFileBuffers(file);
+	CloseHandle(file);
+
+	return 0;
 }
 
 static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
@@ -71,8 +162,8 @@ static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 
 	if (argc < 2)
 	{
-		con_puts(L"Usage:\n  rchhdrrsr.exe [--zero] <path_to_binary>\n\n");
-		return 1;
+		con_puts(L"Usage:\n  rchhdrrsr.exe [--zero] <file_1> [<file_2> ... <file_N>]\n\n");
+		return EXIT_INVALID_ARGS;
 	}
 
 	int arg_idx = 1;
@@ -93,7 +184,7 @@ static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 				continue;
 			}
 			con_printf(L"Error: Option \"%s\" is unknown!\n\n", argv[arg_idx]);
-			return 2;
+			return EXIT_INVALID_ARGS;
 		}
 		break;
 	}
@@ -101,84 +192,37 @@ static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 	if ((arg_idx >= argc) || (!argv[arg_idx][0U]))
 	{
 		con_puts(L"Error: Target file name has *not* been specified!\n\n");
-		return 3;
-	}
-	else if (arg_idx < argc - 1)
-	{
-		con_puts(L"Warning: Excess command-line argument was ignored!\n\n");
+		return EXIT_INVALID_ARGS;
 	}
 
-	con_puts(L"Mapping binary file into memory... ");
-
-	DWORD error = 0U;
-	const HANDLE file = open_file(argv[arg_idx], GENERIC_READ | GENERIC_WRITE, OPEN_EXISTING, &error);
-	if (file == INVALID_HANDLE_VALUE)
+	int retval = -1;
+	for(; arg_idx < argc; ++arg_idx)
 	{
-		con_printf(L"Failed!\n\nSpecified file could *not* be opened for reading/writing:\n%s\n\n", argv[arg_idx]);
-		if(WCHAR *const messsage = get_error_message(error))
+		if(StrChrW(argv[arg_idx], L'*') || StrChrW(argv[arg_idx], L'?'))
 		{
-			con_printf(L"%s\n\n", messsage);
-			LocalFree((HLOCAL)messsage);
+			glob_t glob_ctx;
+			if(WCHAR *file_name = glob_find(argv[arg_idx], &glob_ctx))
+			{
+				do
+				{
+					retval = update_retval(retval, process_file(file_name, zero));
+				}
+				while(file_name = glob_next(&glob_ctx));
+			}
+			else
+			{
+				con_printf(L"No matching file(s) found for the following pattern:\n%s\n\n", argv[arg_idx]);
+				retval = update_retval(retval, EXIT_FILE_IO_ERROR);
+			}
 		}
-		return 4;
+		else
+		{
+			retval = update_retval(retval, process_file(argv[arg_idx], zero));
+		}
 	}
 
-	mapping_t mapping;
-	if(!create_mapping(file, &mapping, 4096U))
-	{
-		con_puts(L"Failed!\n\nError: Failed to map file into memory!\n\n");
-		CloseHandle(file);
-		return 5;
-	}
-
-	con_puts(L"OK\nScanning for PE header... ");
-
-	if (!check_hdr_mz(mapping.view, mapping.size))
-	{
-		con_puts(L"Failed!\n\nFile does *not* look like a valid EXE or DLL file!\n\n");
-		CLEANUP_RETURN(6)
-	}
-
-	DWORD pe_offset = 0U;
-	if (!check_hdr_pe(mapping.view, mapping.size, &pe_offset))
-	{
-		con_puts(L"Failed!\n\nFile does *not* contain a proper PE format header!\n\n");
-		CLEANUP_RETURN(7)
-	}
-
-	con_puts(L"OK\nScanning for Rich (DanS) header... ");
-
-	DWORD rich_footer = 0U;
-	if (!locate_rich_footer(mapping.view, pe_offset, &rich_footer))
-	{
-		con_puts(L"Failed!\n\nFile does *not* seem to contain Rich (DanS) header. Already erased or not created by M$?\n\n");
-		CLEANUP_RETURN(8)
-	}
-
-	DWORD rich_header = 0U;
-	if (!locate_rich_header(mapping.view, rich_footer, &rich_header))
-	{
-		con_puts(L"Failed!\n\nFound a Rich header, but 'DanS' signature could *not* be decoded!\n\n");
-		CLEANUP_RETURN(9)
-	}
-
-	con_printf(L"OK\nErasing 0x%04X to 0x%04X... ", rich_header, rich_footer + 7U);
-
-	for (DWORD off = rich_header; off < rich_footer + 8U; ++off)
-	{
-		mapping.view[off] = zero ? 0x00 : rnd_next_byte();
-	}
-
-	FlushViewOfFile(mapping.view, mapping.size);
-	destroy_mapping(&mapping);
-
-	con_puts(L"OK\n\n");
-
-	FlushFileBuffers(file);
-	CloseHandle(file);
-
-	con_puts(L"Completed.\n\n");
-	return 0;
+	con_puts((retval == EXIT_SUCCESS) ? L">> All header(s) have been erased succssefully.\n\n" : ((retval == EXIT_NO_RICH_HEADER) ? L">> No headers have been found or erased.\n\n" : L">> Exiting with I/O errors!\n\n"));
+	return retval;
 }
 
 int wmain(const int argc, const WCHAR *const *const argv)

@@ -15,8 +15,8 @@
 
 #define VER_RCHHDRRSR_MAJOR      1
 #define VER_RCHHDRRSR_MINOR_HI   0
-#define VER_RCHHDRRSR_MINOR_LO   0
-#define VER_RCHHDRRSR_PATCH      1
+#define VER_RCHHDRRSR_MINOR_LO   1
+#define VER_RCHHDRRSR_PATCH      0
 
 ///////////////////////////////////////////////////////////////////////////////
 // Helper macros (aka: having fun with the C pre-processor)

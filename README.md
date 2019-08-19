@@ -16,10 +16,10 @@ Usage
 
 ```
 Usage:
-  rchhdrrsr.exe [--zero] <path_to_binary>
+  rchhdrrsr.exe [--zero] <file_1> [<file_2> ... <file_N>]
 ```
 
-Option **`--zero`** overwrites with "zero" bytes; default is random bytes.
+Option **`--zero`** overwrites with "zero" bytes; default is random bytes. File names can contain wildcards.
 
 
 Platform Support

@@ -3,6 +3,8 @@
 /*.sdf
 /*.suo
 /*.user
+/.vs
 /bin
 /ipch
 /obj
+/out

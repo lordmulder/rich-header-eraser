@@ -10,8 +10,8 @@
 #include "console.h"
 #include <Shlwapi.h>
 
-#define BUFFSIZE_UTF16 4096U
-#define BUFFSIZE_UTF8 16384U
+#define BUFFSIZE_UTF16 8192U
+#define BUFFSIZE_UTF8 32768U
 
 static UINT cp_original;
 static CRITICAL_SECTION g_mutex;
