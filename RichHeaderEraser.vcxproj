@@ -16,7 +16,9 @@
     <ClCompile Include="src\mmio.cpp" />
     <ClCompile Include="src\rand.cpp" />
     <ClCompile Include="src\rchhdrrsr.cpp" />
-    <ClCompile Include="src\startup.cpp" />
+    <ClCompile Include="src\startup.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="src\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -83,8 +85,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
-      <EntryPointSymbol>startup</EntryPointSymbol>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
       <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
@@ -113,7 +115,7 @@ move /Y "$(IntDir)~$(TargetName)$(TargetExt)" "$(TargetPath)"</Command>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>

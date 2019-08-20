@@ -158,7 +158,7 @@ static int process_file(const WCHAR *const file_name, const BOOL zero)
 	return 0;
 }
 
-static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
+static int rchhdrrsr(const int argc, const WCHAR *const argv[])
 {
 	con_printf(L"Rich-Header Eraser v%u.%02u-%u [%S]\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, __DATE__);
 
@@ -202,19 +202,15 @@ static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 	{
 		if(StrPBrkW(argv[arg_idx], L"*?"))
 		{
-			glob_t glob_ctx;
-			if(WCHAR *file_name = glob_find(argv[arg_idx], &glob_ctx))
+			ULONG_PTR glob_data;
+			if(WCHAR *file_name = glob_find(argv[arg_idx], &glob_data))
 			{
 				do
 				{
 					retval = update_retval(retval, process_file(file_name, zero));
+					LocalFree((HLOCAL)file_name);
 				}
-				while(file_name = glob_next(&glob_ctx));
-			}
-			else
-			{
-				con_printf(L"No matching file(s) found for the following pattern:\n%s\n\n", argv[arg_idx]);
-				retval = update_retval(retval, EXIT_FILE_IO_ERROR);
+				while(file_name = glob_next(&glob_data));
 			}
 		}
 		else
@@ -223,13 +219,24 @@ static int rchhdrrsr(const int argc, const WCHAR *const *const argv)
 		}
 	}
 
-	con_puts((retval == EXIT_SUCCESS) ? L">> All header(s) have been erased succssefully.\n\n" :
-		((retval == EXIT_NO_RICH_HEADER) ? L">> No headers have been found or erased.\n\n" : L">> Exiting with critical errors!\n\n"));
-
-	return retval;
+	if(retval < EXIT_SUCCESS)
+	{
+		con_puts(L">> No matching file(s) found. Nothing to do!\n\n");
+		return EXIT_FILE_IO_ERROR;
+	}
+	else if(retval > EXIT_SUCCESS)
+	{
+		con_puts((retval == EXIT_NO_RICH_HEADER) ? L">> No headers have been found or erased.\n\n" : L">> Exiting with critical errors!\n\n");
+		return retval;
+	}
+	else
+	{
+		con_puts(L">> All header(s) have been erased succssefully.\n\n");
+		return EXIT_SUCCESS;
+	}
 }
 
-int wmain(const int argc, const WCHAR *const *const argv)
+int wmain(const int argc, const WCHAR *const argv[])
 {
 	int retval = -1;
 	con_init();

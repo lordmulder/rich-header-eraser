@@ -7,19 +7,43 @@
  * https://creativecommons.org/publicdomain/zero/1.0/legalcode
  */
 
+#pragma warning(disable: 4200)
+
 #include "glob.h"
 #include <Shlwapi.h>
+
+#define CTX ((glob_ctx_t*)(*ctx))
+
+typedef struct _glob_ctx_t
+{
+	HANDLE handle;
+	WCHAR path_prefix[];
+}
+glob_ctx_t;
 
 static BOOL dot_or_dotdot(const WCHAR *const file_name)
 {
 	return (file_name[0U] == L'.') && ((file_name[1U] == L'\0') || ((file_name[1U] == L'.') && (file_name[2U] == L'\0')));
 }
 
+static SIZE_T get_prefix_len(const WCHAR *const pattern)
+{
+	SIZE_T prefix_len = 0U;
+	for(SIZE_T i = 0U; pattern[i]; ++i)
+	{
+		if((pattern[i] == '\\') || (pattern[i] == '/'))
+		{
+			prefix_len = i + 1U;
+		}
+	}
+	return prefix_len;
+}
+
 static WCHAR *concat_path(const WCHAR *const prefix, const WCHAR *const file_name)
 {
-	if(prefix && prefix[0U])
+	if(prefix[0U])
 	{
-		WCHAR *const buffer = (WCHAR*) LocalAlloc(LPTR, sizeof(WCHAR) * (lstrlenW(prefix) + lstrlen(file_name) + 1U));
+		WCHAR *const buffer = (WCHAR*) LocalAlloc(LPTR, sizeof(WCHAR) * (lstrlenW(prefix) + lstrlenW(file_name) + 1U));
 		if(buffer)
 		{
 			lstrcpyW(buffer, prefix);
@@ -33,47 +57,28 @@ static WCHAR *concat_path(const WCHAR *const prefix, const WCHAR *const file_nam
 	}
 }
 
-static void clean_up(glob_t *const ctx)
+WCHAR *glob_find(const WCHAR *const pattern, ULONG_PTR *const ctx)
 {
-	if(ctx->handle != INVALID_HANDLE_VALUE)
-	{
-		FindClose(ctx->handle);
-		ctx->handle = INVALID_HANDLE_VALUE;
-	}
-	if(ctx->path_prefix)
-	{
-		LocalFree((HLOCAL)ctx->path_prefix);
-		ctx->path_prefix = NULL;
-	}
-}
-
-WCHAR *glob_find(const WCHAR *const pattern, glob_t *const ctx)
-{
-	SecureZeroMemory(ctx, sizeof(glob_t));
-
-	SIZE_T prefix_len = 0U;
-	for(SIZE_T i = 0U; pattern[i]; ++i)
-	{
-		if((pattern[i] == '\\') || (pattern[i] == '/'))
-		{
-			prefix_len = i + 1U;
-		}
-	}
+	*ctx = NULL;
 
 	WIN32_FIND_DATAW find_data;
-	if((ctx->handle = FindFirstFileExW(pattern, FindExInfoBasic, &find_data, FindExSearchNameMatch, NULL, 0U)) == INVALID_HANDLE_VALUE)
+	const HANDLE handle = FindFirstFileExW(pattern, FindExInfoBasic, &find_data, FindExSearchNameMatch, NULL, 0U);
+	if(handle == INVALID_HANDLE_VALUE)
 	{
 		return NULL;
 	}
 
-	if(prefix_len > 0)
+	const SIZE_T prefix_len = get_prefix_len(pattern);
+	if(!(*ctx = (ULONG_PTR) LocalAlloc(LPTR, sizeof(glob_ctx_t) + (sizeof(WCHAR) * (prefix_len + 1U)))))
 	{
-		if(!(ctx->path_prefix = (WCHAR*) LocalAlloc(LPTR, sizeof(WCHAR) * (prefix_len + 1U))))
-		{
-			clean_up(ctx);
-			return NULL;
-		}
-		lstrcpynW(ctx->path_prefix, pattern, prefix_len + 1U);
+		FindClose(handle);
+		return NULL;
+	}
+
+	CTX->handle = handle;
+	if(prefix_len)
+	{
+		lstrcpynW(CTX->path_prefix, pattern, prefix_len + 1U);
 	}
 	
 	if(dot_or_dotdot(find_data.cFileName))
@@ -81,33 +86,51 @@ WCHAR *glob_find(const WCHAR *const pattern, glob_t *const ctx)
 		return glob_next(ctx);
 	}
 
-	WCHAR *const file_path = concat_path(ctx->path_prefix, find_data.cFileName);
+	WCHAR *const file_path = concat_path(CTX->path_prefix, find_data.cFileName);
 	if(!file_path)
 	{
-		clean_up(ctx);
+		glob_free(ctx);
 	}
 
 	return file_path;
 }
 
-WCHAR *glob_next(glob_t *const ctx)
+WCHAR *glob_next(ULONG_PTR *const ctx)
 {
+	if(!(*ctx))
+	{
+		return NULL;
+	}
+
 	WIN32_FIND_DATAW find_data;
 	do
 	{
-		if(!FindNextFileW(ctx->handle, &find_data))
+		if(!FindNextFileW(CTX->handle, &find_data))
 		{
-			clean_up(ctx);
+			glob_free(ctx);
 			return NULL;
 		}
 	}
 	while(dot_or_dotdot(find_data.cFileName));
 
-	WCHAR *const file_path = concat_path(ctx->path_prefix, find_data.cFileName);
+	WCHAR *const file_path = concat_path(CTX->path_prefix, find_data.cFileName);
 	if(!file_path)
 	{
-		clean_up(ctx);
+		glob_free(ctx);
 	}
 
 	return file_path;
+}
+
+void glob_free(ULONG_PTR *const ctx)
+{
+	if(*ctx)
+	{
+		if(CTX->handle != INVALID_HANDLE_VALUE)
+		{
+			FindClose(CTX->handle);
+		}
+		LocalFree((HLOCAL)(*ctx));
+		*ctx = NULL;
+	}
 }

@@ -10,12 +10,6 @@
 #define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
 
-typedef struct _glob_t
-{
-	HANDLE handle;
-	WCHAR *path_prefix;
-}
-glob_t;
-
-WCHAR *glob_find(const WCHAR *const pattern, glob_t *const ctx);
-WCHAR *glob_next(glob_t *const ctx);
+WCHAR *glob_find(const WCHAR *const pattern, ULONG_PTR *const ctx);
+WCHAR *glob_next(ULONG_PTR *const ctx);
+void   glob_free(ULONG_PTR *const ctx);
