@@ -202,7 +202,7 @@ static int rchhdrrsr(const int argc, const WCHAR *const argv[])
 	{
 		if(StrPBrkW(argv[arg_idx], L"*?"))
 		{
-			ULONG_PTR glob_data;
+			glob_ctx_t glob_data;
 			if(WCHAR *file_name = glob_find(argv[arg_idx], &glob_data))
 			{
 				do

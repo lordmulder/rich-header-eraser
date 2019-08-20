@@ -10,6 +10,8 @@
 #define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
 
-WCHAR *glob_find(const WCHAR *const pattern, ULONG_PTR *const ctx);
-WCHAR *glob_next(ULONG_PTR *const ctx);
-void   glob_free(ULONG_PTR *const ctx);
+typedef ULONG_PTR glob_ctx_t;
+
+WCHAR *glob_find(const WCHAR *const pattern, glob_ctx_t *const ctx);
+WCHAR *glob_next(glob_ctx_t *const ctx);
+void   glob_free(glob_ctx_t *const ctx);

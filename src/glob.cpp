@@ -7,19 +7,18 @@
  * https://creativecommons.org/publicdomain/zero/1.0/legalcode
  */
 
-#pragma warning(disable: 4200)
-
 #include "glob.h"
 #include <Shlwapi.h>
 
-#define CTX ((glob_ctx_t*)(*ctx))
+#pragma warning(disable: 4200)
+#define CTX ((glob_private_t*)(*ctx))
 
-typedef struct _glob_ctx_t
+typedef struct _glob_private_t
 {
 	HANDLE handle;
 	WCHAR path_prefix[];
 }
-glob_ctx_t;
+glob_private_t;
 
 static BOOL dot_or_dotdot(const WCHAR *const file_name)
 {
@@ -57,7 +56,7 @@ static WCHAR *concat_path(const WCHAR *const prefix, const WCHAR *const file_nam
 	}
 }
 
-WCHAR *glob_find(const WCHAR *const pattern, ULONG_PTR *const ctx)
+WCHAR *glob_find(const WCHAR *const pattern, glob_ctx_t *const ctx)
 {
 	*ctx = NULL;
 
@@ -95,7 +94,7 @@ WCHAR *glob_find(const WCHAR *const pattern, ULONG_PTR *const ctx)
 	return file_path;
 }
 
-WCHAR *glob_next(ULONG_PTR *const ctx)
+WCHAR *glob_next(glob_ctx_t *const ctx)
 {
 	if(!(*ctx))
 	{
@@ -122,7 +121,7 @@ WCHAR *glob_next(ULONG_PTR *const ctx)
 	return file_path;
 }
 
-void glob_free(ULONG_PTR *const ctx)
+void glob_free(glob_ctx_t *const ctx)
 {
 	if(*ctx)
 	{
