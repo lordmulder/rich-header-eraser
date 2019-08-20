@@ -7,11 +7,13 @@
  * https://creativecommons.org/publicdomain/zero/1.0/legalcode
  */
 
+#pragma warning(disable: 4200)
+
 #include "glob.h"
 #include <Shlwapi.h>
 
-#pragma warning(disable: 4200)
 #define CTX ((glob_private_t*)(*ctx))
+#define IS_IGNORED_ENTRY(X) (((X).dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || dot_or_dotdot((X).cFileName))
 
 typedef struct _glob_private_t
 {
@@ -30,7 +32,7 @@ static SIZE_T get_prefix_len(const WCHAR *const pattern)
 	SIZE_T prefix_len = 0U;
 	for(SIZE_T i = 0U; pattern[i]; ++i)
 	{
-		if((pattern[i] == '\\') || (pattern[i] == '/'))
+		if((pattern[i] == L'\\') || (pattern[i] == L'/'))
 		{
 			prefix_len = i + 1U;
 		}
@@ -80,7 +82,7 @@ WCHAR *glob_find(const WCHAR *const pattern, glob_ctx_t *const ctx)
 		lstrcpynW(CTX->path_prefix, pattern, prefix_len + 1U);
 	}
 	
-	if(dot_or_dotdot(find_data.cFileName))
+	if(IS_IGNORED_ENTRY(find_data))
 	{
 		return glob_next(ctx);
 	}
@@ -110,7 +112,7 @@ WCHAR *glob_next(glob_ctx_t *const ctx)
 			return NULL;
 		}
 	}
-	while(dot_or_dotdot(find_data.cFileName));
+	while(IS_IGNORED_ENTRY(find_data));
 
 	WCHAR *const file_path = concat_path(CTX->path_prefix, find_data.cFileName);
 	if(!file_path)
