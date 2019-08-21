@@ -89,11 +89,7 @@
       </EntryPointSymbol>
       <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(TargetPath)" "$(IntDir)~$(TargetName)$(TargetExt)"
-"$(TargetPath)" "$(IntDir)~$(TargetName)$(TargetExt)"
-move /Y "$(IntDir)~$(TargetName)$(TargetExt)" "$(TargetPath)"</Command>
-    </PostBuildEvent>
+    <PostBuildEvent />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>

@@ -9,12 +9,11 @@
 
 #include "rand.h"
 
-#define N 624U
-#define M 397U
-
-static DWORD g_vector[N], g_rbuff;
-static SIZE_T g_idx = N + 1U, g_shift = 4U;
 static CRITICAL_SECTION g_mutex;
+static BOOL g_seeded = FALSE;
+static DWORD g_state[3U] = { 0x4F5B7CF1, 0x599531DE, 0xBC360195 };
+static DWORD g_byte_buffer;
+static SIZE_T g_byte_counter = 4U;
 
 static DWORD mix_function(DWORD a, DWORD b, DWORD c)
 {
@@ -30,12 +29,11 @@ static DWORD mix_function(DWORD a, DWORD b, DWORD c)
 	return c;
 }
 
-static DWORD create_seed(void)
+static DWORD get_entropy(DWORD seed)
 {
-	DWORD seed = 0x4F5B7CF1;
-	FILETIME time;
 	LARGE_INTEGER perf;
-	for (SIZE_T i = 0; i < 97U; i++)
+	FILETIME time;
+	for (SIZE_T i = 0U; i < 31U; i++)
 	{
 		GetSystemTimeAsFileTime(&time);
 		seed = mix_function(time.dwHighDateTime, time.dwLowDateTime, seed);
@@ -45,74 +43,60 @@ static DWORD create_seed(void)
 	return seed;
 }
 
-static void MT_init(DWORD *const p, const SIZE_T len, DWORD seed)
+static void rnd_seed(void)
 {
-	static const DWORD mult = 1812433253UL;
-	for (SIZE_T i = 0; i < len; i++)
+	for (SIZE_T i = 0U; i < 31U; i++)
 	{
-		p[i] = seed;
-		seed = mult * (seed ^ (seed >> 30)) + (i+1U);
+		g_state[0U] = get_entropy(g_state[0U]);
+		g_state[1U] = get_entropy(g_state[1U]);
+		g_state[2U] = get_entropy(g_state[2U]);
 	}
 }
 
-static void MT_update(DWORD *const p)
+static void rnd_update(void)
 {
-	static const DWORD A[2U] = { 0U, 0x9908B0DF };
-	SIZE_T i = 0;
-	for (; i < N-M; ++i)
-	{
-		p[i] = p[i+(M)] ^ (((p[i] & 0x80000000) | (p[i+1U] & 0x7FFFFFFF)) >> 1U) ^ A[p[i+1U] & 1U];
-	}
-	for (; i < N-1; ++i)
-	{
-		p[i] = p[i+(M-N)] ^ (((p[i] & 0x80000000) | (p[i+1U] & 0x7FFFFFFF)) >> 1) ^ A[p[i+1U] & 1U];
-	}
-	p[N-1U] = p[M-1U] ^ (((p[N-1U] & 0x80000000) | (p[0U] & 0x7FFFFFFF)) >> 1) ^ A[p[0U] & 1U];
+	g_state[0U] = mix_function(g_state[1U], g_state[2U], g_state[0U] + 1U);
+	g_state[1U] = mix_function(g_state[2U], g_state[0U], g_state[1U] + 1U);
+	g_state[2U] = mix_function(g_state[0U], g_state[1U], g_state[2U] + 1U);
 }
 
-static DWORD MT_next()
+static DWORD _rnd_next(void)
 {
-	if (g_idx >= N)
+	if (!g_seeded)
 	{
-		if(g_idx > N)
-		{
-			MT_init(g_vector, N, create_seed());
-		}
-		MT_update(g_vector);
-		g_idx = 0U;
+		rnd_seed();
+		g_seeded = TRUE;
 	}
-	DWORD e  = g_vector[g_idx++];
-	e ^= (e >> 11U);
-	e ^= (e <<  7U) & 0x9D2C5680;
-	e ^= (e << 15U) & 0xEFC60000;
-	e ^= (e >> 18U);
-	return e;
+	rnd_update();
+	return g_state[0U];
 }
 
-static BYTE _next_byte(void)
+static BYTE _rnd_byte(void)
 {
-	if(g_shift >= 4U)
+	if (++g_byte_counter > 3U)
 	{
-		g_rbuff = MT_next();
-		g_shift = 0U;
+		g_byte_buffer = _rnd_next();
+		g_byte_counter = 0U;
+		return (BYTE) g_byte_buffer;
 	}
-	return (BYTE)(g_rbuff >> ((g_shift++) * 8U));
+	g_byte_buffer >>= 8U;
+	return (BYTE) g_byte_buffer;
 }
 
-BYTE rnd_next_byte(void)
+DWORD rnd_next(void)
 {
-	BYTE retval;
+	DWORD retval;
 	EnterCriticalSection(&g_mutex);
-	retval = _next_byte();
+	retval = _rnd_next();
 	LeaveCriticalSection(&g_mutex);
 	return retval;
 }
 
-DWORD rnd_next_word(void)
+BYTE rnd_byte(void)
 {
-	DWORD retval;
+	BYTE retval;
 	EnterCriticalSection(&g_mutex);
-	retval = MT_next();
+	retval = _rnd_byte();
 	LeaveCriticalSection(&g_mutex);
 	return retval;
 }

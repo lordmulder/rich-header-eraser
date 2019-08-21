@@ -144,7 +144,7 @@ static int process_file(const WCHAR *const file_name, const BOOL zero)
 
 	for (DWORD off = rich_header; off < rich_footer + 8U; ++off)
 	{
-		mapping.view[off] = zero ? 0x00 : rnd_next_byte();
+		mapping.view[off] = zero ? 0x00 : rnd_byte();
 	}
 
 	FlushViewOfFile(mapping.view, mapping.size);

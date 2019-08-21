@@ -17,7 +17,7 @@ extern "C"
 {
 	int startup(void)
 	{
-		//SetErrorMode(SetErrorMode(0x0003) | 0x0003);
+		SetErrorMode(SetErrorMode(0x0003) | 0x0003);
 		int argc = 0, retval = -1;
 		if(const WCHAR *const *const argv = CommandLineToArgvW(GetCommandLineW(), &argc))
 		{
