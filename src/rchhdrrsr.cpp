@@ -203,7 +203,7 @@ static int rchhdrrsr(const int argc, const WCHAR *const argv[])
 		if(StrPBrkW(argv[arg_idx], L"*?"))
 		{
 			glob_ctx_t glob_data;
-			if(WCHAR *file_name = glob_find(argv[arg_idx], &glob_data))
+			if(WCHAR *file_name = glob_find(argv[arg_idx], GLOB_FILTER_REG, &glob_data))
 			{
 				do
 				{
@@ -226,12 +226,12 @@ static int rchhdrrsr(const int argc, const WCHAR *const argv[])
 	}
 	else if(retval > EXIT_SUCCESS)
 	{
-		con_puts((retval == EXIT_NO_RICH_HEADER) ? L">> No headers have been found or erased.\n\n" : L">> Exiting with critical errors!\n\n");
+		con_puts((retval == EXIT_NO_RICH_HEADER) ? L">> Done: No headers have been found or erased.\n\n" : L">> Exiting with critical errors !!!\n\n");
 		return retval;
 	}
 	else
 	{
-		con_puts(L">> All header(s) have been erased succssefully.\n\n");
+		con_puts(L">> Done: All header(s) have been erased succssefully.\n\n");
 		return EXIT_SUCCESS;
 	}
 }
@@ -242,6 +242,7 @@ int wmain(const int argc, const WCHAR *const argv[])
 	con_init();
 	rnd_init();
 	retval = rchhdrrsr(argc, argv);
+	rnd_exit();
 	con_exit();
 	return retval;
 }

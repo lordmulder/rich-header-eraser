@@ -12,6 +12,14 @@
 
 typedef ULONG_PTR glob_ctx_t;
 
-WCHAR *glob_find(const WCHAR *const pattern, glob_ctx_t *const ctx);
+typedef enum 
+{ 
+	GLOB_FILTER_ALL = 0U,
+	GLOB_FILTER_REG = 1U,
+	GLOB_FILTER_DIR = 2U
+}
+glob_filter_t;
+
+WCHAR *glob_find(const WCHAR *const pattern, const glob_filter_t filter, glob_ctx_t *const ctx);
 WCHAR *glob_next(glob_ctx_t *const ctx);
 void   glob_free(glob_ctx_t *const ctx);

@@ -13,18 +13,34 @@
 #include <Shlwapi.h>
 
 #define CTX ((glob_private_t*)(*ctx))
-#define IS_IGNORED_ENTRY(X) (((X).dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || dot_or_dotdot((X).cFileName))
 
 typedef struct _glob_private_t
 {
 	HANDLE handle;
+	glob_filter_t filter_mode;
 	WCHAR path_prefix[];
 }
 glob_private_t;
 
-static BOOL dot_or_dotdot(const WCHAR *const file_name)
+static BOOL skip_entry(const WIN32_FIND_DATAW *const find_data, const glob_filter_t filter)
 {
-	return (file_name[0U] == L'.') && ((file_name[1U] == L'\0') || ((file_name[1U] == L'.') && (file_name[2U] == L'\0')));
+	const WCHAR *const file_name = find_data->cFileName;
+	if((file_name[0U] == L'.') && ((file_name[1U] == L'\0') || ((file_name[1U] == L'.') && (file_name[2U] == L'\0'))))
+	{
+		return TRUE;
+	}
+
+	const DWORD attributes = find_data->dwFileAttributes;
+	if((filter == GLOB_FILTER_DIR) && (!(attributes & FILE_ATTRIBUTE_DIRECTORY)))
+	{
+		return TRUE;
+	}
+	else if((filter == GLOB_FILTER_REG) && (attributes & FILE_ATTRIBUTE_DIRECTORY))
+	{
+		return TRUE;
+	}
+
+	return FALSE;
 }
 
 static SIZE_T get_prefix_len(const WCHAR *const pattern)
@@ -58,7 +74,7 @@ static WCHAR *concat_path(const WCHAR *const prefix, const WCHAR *const file_nam
 	}
 }
 
-WCHAR *glob_find(const WCHAR *const pattern, glob_ctx_t *const ctx)
+WCHAR *glob_find(const WCHAR *const pattern, const glob_filter_t filter, glob_ctx_t *const ctx)
 {
 	*ctx = NULL;
 
@@ -70,19 +86,20 @@ WCHAR *glob_find(const WCHAR *const pattern, glob_ctx_t *const ctx)
 	}
 
 	const SIZE_T prefix_len = get_prefix_len(pattern);
-	if(!(*ctx = (ULONG_PTR) LocalAlloc(LPTR, sizeof(glob_ctx_t) + (sizeof(WCHAR) * (prefix_len + 1U)))))
+	if(!(*ctx = (ULONG_PTR) LocalAlloc(LPTR, sizeof(glob_private_t) + (sizeof(WCHAR) * (prefix_len + 1U)))))
 	{
 		FindClose(handle);
 		return NULL;
 	}
 
 	CTX->handle = handle;
+	CTX->filter_mode = min(GLOB_FILTER_DIR, max(GLOB_FILTER_ALL, filter));
 	if(prefix_len)
 	{
 		lstrcpynW(CTX->path_prefix, pattern, prefix_len + 1U);
 	}
 	
-	if(IS_IGNORED_ENTRY(find_data))
+	if(skip_entry(&find_data, CTX->filter_mode))
 	{
 		return glob_next(ctx);
 	}
@@ -112,7 +129,7 @@ WCHAR *glob_next(glob_ctx_t *const ctx)
 			return NULL;
 		}
 	}
-	while(IS_IGNORED_ENTRY(find_data));
+	while(skip_entry(&find_data, CTX->filter_mode));
 
 	WCHAR *const file_path = concat_path(CTX->path_prefix, find_data.cFileName);
 	if(!file_path)
