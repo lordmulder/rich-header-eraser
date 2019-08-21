@@ -160,11 +160,18 @@ static int process_file(const WCHAR *const file_name, const BOOL zero)
 
 static int rchhdrrsr(const int argc, const WCHAR *const argv[])
 {
-	con_printf(L"Rich-Header Eraser v%u.%02u-%u [%S]\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, __DATE__);
+	con_printf(L"Rich-Header Eraser v%u.%02u-%u [%S]\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, __DATE__);
+	con_puts(L"Created by LoRd_MuldeR <https://github.com/lordmulder>\n\n");
 
 	if (argc < 2)
 	{
-		con_puts(L"Usage:\n  rchhdrrsr.exe [--zero] <file_1> [<file_2> ... <file_N>]\n\n");
+		con_puts(L"-----------------------------------------------------------\n");
+		con_puts(L"This work is licensed under the CC0 1.0 Universal License.\n");
+		con_puts(L"To view a copy of the license, visit:\n");
+		con_puts(L"https://creativecommons.org/publicdomain/zero/1.0/legalcode\n");
+		con_puts(L"-----------------------------------------------------------\n\n");
+		con_puts(L"Usage:\n");
+		con_puts(L"  rchhdrrsr.exe [--zero] <file_1> [<file_2> ... <file_N>]\n\n");
 		return EXIT_INVALID_ARGS;
 	}
 
