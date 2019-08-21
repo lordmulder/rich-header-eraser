@@ -11,16 +11,22 @@
 
 #define DELAY_BY(X) do { if ((X) > 0U) { Sleep((X)); } } while(0)
 
+static BOOL is_directory(const WCHAR *const path)
+{
+	const DWORD attributes = GetFileAttributesW(path);
+	return (attributes != INVALID_FILE_ATTRIBUTES) && (attributes & FILE_ATTRIBUTE_DIRECTORY);
+}
+
 HANDLE open_file(const WCHAR *const file_name, const DWORD access_flags, const DWORD creation_flags, DWORD *const error)
 {
 	HANDLE handle = NULL;
 	*error = 0U;
-	for (DWORD retry = 0; retry < 72; ++retry)
+	for (DWORD retry = 0; retry < 96; ++retry)
 	{
 		DELAY_BY(retry);
 		handle = CreateFileW(file_name, access_flags, FILE_SHARE_READ, NULL, creation_flags, FILE_ATTRIBUTE_NORMAL, NULL);
 		*error = GetLastError();
-		if ((handle != INVALID_HANDLE_VALUE) || ((retry > 0U) && ((*error == ERROR_FILE_NOT_FOUND) || (*error == ERROR_PATH_NOT_FOUND))))
+		if ((handle != INVALID_HANDLE_VALUE) || ((retry > 0U) && ((*error == ERROR_FILE_NOT_FOUND) || (*error == ERROR_PATH_NOT_FOUND) || is_directory(file_name))))
 		{
 			break;
 		}
