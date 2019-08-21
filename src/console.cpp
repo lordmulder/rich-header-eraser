@@ -81,6 +81,7 @@ void con_init(void)
 
 void con_exit(void)
 {
+	DeleteCriticalSection(&g_mutex);
 	if(cp_original != 0U)
 	{
 		SetConsoleCP(cp_original);

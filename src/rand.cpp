@@ -105,3 +105,8 @@ void rnd_init(void)
 {
 	InitializeCriticalSection(&g_mutex);
 }
+
+void rnd_exit(void)
+{
+	DeleteCriticalSection(&g_mutex);
+}

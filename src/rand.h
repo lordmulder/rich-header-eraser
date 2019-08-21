@@ -13,3 +13,4 @@
 void  rnd_init(void);
 DWORD rnd_next(void);
 BYTE  rnd_byte(void);
+void  rnd_exit(void);
