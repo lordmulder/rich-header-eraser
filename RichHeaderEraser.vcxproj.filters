@@ -66,5 +66,8 @@
     <Manifest Include="res\compat.manifest">
       <Filter>Resource Files</Filter>
     </Manifest>
+    <Manifest Include="res\long_path.manifest">
+      <Filter>Resource Files</Filter>
+    </Manifest>
   </ItemGroup>
 </Project>

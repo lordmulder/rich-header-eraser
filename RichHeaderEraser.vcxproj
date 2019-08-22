@@ -34,6 +34,7 @@
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="res\compat.manifest" />
+    <Manifest Include="res\long_path.manifest" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{39BBDD58-A187-40E2-9F9E-6011E8668AD4}</ProjectGuid>
@@ -90,6 +91,9 @@
       <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent />
+    <Manifest>
+      <AdditionalOptions>-canonicalize %(AdditionalOptions)</AdditionalOptions>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -124,6 +128,9 @@
 "$(TargetPath)" "$(IntDir)~$(TargetName)$(TargetExt)"
 move /Y "$(IntDir)~$(TargetName)$(TargetExt)" "$(TargetPath)"</Command>
     </PostBuildEvent>
+    <Manifest>
+      <AdditionalOptions>-canonicalize %(AdditionalOptions)</AdditionalOptions>
+    </Manifest>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
