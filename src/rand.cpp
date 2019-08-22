@@ -8,12 +8,15 @@
  */
 
 #include "rand.h"
+#include <limits.h>
+
+#define RESEED_COUNT 999983U
 
 static CRITICAL_SECTION g_mutex;
-static BOOL g_seeded = FALSE;
 static DWORD g_state[3U] = { 0x4F5B7CF1, 0x599531DE, 0xBC360195 };
-static DWORD g_byte_buffer;
-static SIZE_T g_byte_counter = 4U;
+static DWORD g_reseed_counter = RESEED_COUNT;
+static DWORD g_byte_buffer = MAXDWORD;
+static SIZE_T g_byte_counter = sizeof(DWORD);
 
 static DWORD mix_function(DWORD a, DWORD b, DWORD c)
 {
@@ -62,10 +65,10 @@ static void rnd_update(void)
 
 static DWORD _rnd_next(void)
 {
-	if (!g_seeded)
+	if (++g_reseed_counter >= RESEED_COUNT)
 	{
 		rnd_seed();
-		g_seeded = TRUE;
+		g_reseed_counter = 0U;
 	}
 	rnd_update();
 	return g_state[0U];
@@ -73,14 +76,17 @@ static DWORD _rnd_next(void)
 
 static BYTE _rnd_byte(void)
 {
-	if (++g_byte_counter > 3U)
+	if (++g_byte_counter >= sizeof(DWORD))
 	{
 		g_byte_buffer = _rnd_next();
 		g_byte_counter = 0U;
 		return (BYTE) g_byte_buffer;
 	}
-	g_byte_buffer >>= 8U;
-	return (BYTE) g_byte_buffer;
+	else
+	{
+		g_byte_buffer >>= CHAR_BIT;
+		return (BYTE) g_byte_buffer;
+	}
 }
 
 DWORD rnd_next(void)
