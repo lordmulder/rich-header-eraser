@@ -49,12 +49,13 @@ static DWORD get_entropy(DWORD seed)
 
 static void rnd_seed(void)
 {
-	for (SIZE_T i = 0U; i < 31U; i++)
+	for (SIZE_T i = 0U; i < 3U; i++)
 	{
 		g_state[0U] = get_entropy(g_state[0U]);
 		g_state[1U] = get_entropy(g_state[1U]);
 		g_state[2U] = get_entropy(g_state[2U]);
 		g_scrambler = get_entropy(g_scrambler);
+		Sleep(DWORD(i));
 	}
 }
 
