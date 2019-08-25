@@ -14,6 +14,7 @@
 
 static CRITICAL_SECTION g_mutex;
 static DWORD g_state[3U] = { 0x4F5B7CF1, 0x599531DE, 0xBC360195 };
+static DWORD g_scrambler = 0x2933231A;
 static DWORD g_reseed_counter = RESEED_COUNT;
 static DWORD g_byte_buffer = MAXDWORD;
 static SIZE_T g_byte_counter = sizeof(DWORD);
@@ -53,6 +54,7 @@ static void rnd_seed(void)
 		g_state[0U] = get_entropy(g_state[0U]);
 		g_state[1U] = get_entropy(g_state[1U]);
 		g_state[2U] = get_entropy(g_state[2U]);
+		g_scrambler = get_entropy(g_scrambler);
 	}
 }
 
@@ -71,7 +73,7 @@ static DWORD _rnd_next(void)
 		g_reseed_counter = 0U;
 	}
 	rnd_update();
-	return g_state[0U];
+	return g_state[0U] ^ g_scrambler;
 }
 
 static BYTE _rnd_byte(void)
