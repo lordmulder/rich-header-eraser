@@ -8,9 +8,13 @@
  */
 
 #include "rand.h"
+#include <MMSystem.h>
 #include <limits.h>
 
 #define RESEED_COUNT 999983U
+#define MIX(X,Y,Z) \
+	a += (X); b += (Y); c += (Z); \
+	mix_function(a, b, c);
 
 static CRITICAL_SECTION g_mutex;
 static DWORD g_state[3U] = { 0x4F5B7CF1, 0x599531DE, 0xBC360195 };
@@ -19,7 +23,7 @@ static DWORD g_reseed_counter = RESEED_COUNT;
 static DWORD g_byte_buffer = MAXDWORD;
 static SIZE_T g_byte_counter = sizeof(DWORD);
 
-static DWORD mix_function(DWORD a, DWORD b, DWORD c)
+static void mix_function(DWORD &a, DWORD &b, DWORD &c)
 {
 	a = a - b; a = a - c; a = a ^ (c >> 13);
 	b = b - c; b = b - a; b = b ^ (a <<  8);
@@ -30,40 +34,37 @@ static DWORD mix_function(DWORD a, DWORD b, DWORD c)
 	a = a - b; a = a - c; a = a ^ (c >>  3);
 	b = b - c; b = b - a; b = b ^ (a << 10);
 	c = c - a; c = c - b; c = c ^ (b >> 15);
-	return c;
 }
 
-static DWORD get_entropy(DWORD seed)
+static DWORD get_entropy(const DWORD seed)
 {
-	LARGE_INTEGER perf;
+	DWORD a = 0x48FA2D3C, b = 0xC6A1AB02, c = seed;
 	FILETIME time;
-	for (SIZE_T i = 0U; i < 31U; i++)
+	LARGE_INTEGER perf;
+	MIX(timeGetTime(), GetCurrentProcessId(), GetCurrentThreadId())
+	for (SIZE_T i = 0U; i < 997U; i++)
 	{
 		GetSystemTimeAsFileTime(&time);
-		seed = mix_function(time.dwHighDateTime, time.dwLowDateTime, seed);
+		MIX(timeGetTime(), time.dwHighDateTime, time.dwLowDateTime)
 		QueryPerformanceCounter(&perf);
-		seed = mix_function(perf.HighPart, perf.LowPart, seed);
+		MIX(timeGetTime(), perf.HighPart, perf.LowPart)
 	}
-	return seed;
+	return c;
 }
 
 static void rnd_seed(void)
 {
-	for (SIZE_T i = 0U; i < 3U; i++)
-	{
-		g_state[0U] = get_entropy(g_state[0U]);
-		g_state[1U] = get_entropy(g_state[1U]);
-		g_state[2U] = get_entropy(g_state[2U]);
-		g_scrambler = get_entropy(g_scrambler);
-		Sleep(DWORD(i));
-	}
+	g_state[0U] = get_entropy(g_state[0U]);
+	g_state[1U] = get_entropy(g_state[1U]);
+	g_state[2U] = get_entropy(g_state[2U]);
+	g_scrambler = get_entropy(g_scrambler);
 }
 
 static void rnd_update(void)
 {
-	g_state[0U] = mix_function(g_state[1U], g_state[2U], g_state[0U] + 1U);
-	g_state[1U] = mix_function(g_state[2U], g_state[0U], g_state[1U] + 1U);
-	g_state[2U] = mix_function(g_state[0U], g_state[1U], g_state[2U] + 1U);
+	g_state[0U] += 1U; mix_function(g_state[2U], g_state[1U], g_state[0U]);
+	g_state[1U] += 1U; mix_function(g_state[0U], g_state[2U], g_state[1U]);
+	g_state[2U] += 1U; mix_function(g_state[1U], g_state[0U], g_state[2U]);
 }
 
 static DWORD _rnd_next(void)
