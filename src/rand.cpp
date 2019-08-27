@@ -8,7 +8,6 @@
  */
 
 #include "rand.h"
-#include <MMSystem.h>
 #include <limits.h>
 
 #define RESEED_COUNT 999983U
@@ -17,8 +16,7 @@
 	mix_function(a, b, c);
 
 static CRITICAL_SECTION g_mutex;
-static DWORD g_state[3U] = { 0x4F5B7CF1, 0x599531DE, 0xBC360195 };
-static DWORD g_scrambler = 0x2933231A;
+static DWORD g_state[4U] = { 0x4F5B7CF1, 0x599531DE, 0xBC360195, 0x2933231A };
 static DWORD g_reseed_counter = RESEED_COUNT;
 static DWORD g_byte_buffer = MAXDWORD;
 static SIZE_T g_byte_counter = sizeof(DWORD);
@@ -39,15 +37,14 @@ static void mix_function(DWORD &a, DWORD &b, DWORD &c)
 static DWORD get_entropy(const DWORD seed)
 {
 	DWORD a = 0x48FA2D3C, b = 0xC6A1AB02, c = seed;
-	FILETIME time;
-	LARGE_INTEGER perf;
-	MIX(timeGetTime(), GetCurrentProcessId(), GetCurrentThreadId())
+	FILETIME time; LARGE_INTEGER perf;
+	MIX((DWORD_PTR)&a, GetCurrentProcessId(), GetCurrentThreadId())
 	for (SIZE_T i = 0U; i < 997U; i++)
 	{
 		GetSystemTimeAsFileTime(&time);
-		MIX(timeGetTime(), time.dwHighDateTime, time.dwLowDateTime)
+		MIX(GetTickCount(), time.dwHighDateTime, time.dwLowDateTime)
 		QueryPerformanceCounter(&perf);
-		MIX(timeGetTime(), perf.HighPart, perf.LowPart)
+		MIX(~GetTickCount(), perf.HighPart, perf.LowPart)
 	}
 	return c;
 }
@@ -57,7 +54,7 @@ static void rnd_seed(void)
 	g_state[0U] = get_entropy(g_state[0U]);
 	g_state[1U] = get_entropy(g_state[1U]);
 	g_state[2U] = get_entropy(g_state[2U]);
-	g_scrambler = get_entropy(g_scrambler);
+	g_state[3U] = get_entropy(g_state[3U]);
 }
 
 static void rnd_update(void)
@@ -75,7 +72,7 @@ static DWORD _rnd_next(void)
 		g_reseed_counter = 0U;
 	}
 	rnd_update();
-	return g_state[0U] ^ g_scrambler;
+	return g_state[0U] ^ g_state[3U];
 }
 
 static BYTE _rnd_byte(void)
