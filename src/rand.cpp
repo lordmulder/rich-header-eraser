@@ -39,7 +39,7 @@ static DWORD get_entropy(const DWORD seed)
 	DWORD a = 0x48FA2D3C, b = 0xC6A1AB02, c = seed;
 	FILETIME time; LARGE_INTEGER perf;
 	MIX((DWORD_PTR)&a, GetCurrentProcessId(), GetCurrentThreadId())
-	for (SIZE_T i = 0U; i < 997U; i++)
+	for (UINT i = 0U; i < 97U; i++)
 	{
 		GetSystemTimeAsFileTime(&time);
 		MIX(GetTickCount(), time.dwHighDateTime, time.dwLowDateTime)
@@ -51,10 +51,13 @@ static DWORD get_entropy(const DWORD seed)
 
 static void rnd_seed(void)
 {
-	g_state[0U] = get_entropy(g_state[0U]);
-	g_state[1U] = get_entropy(g_state[1U]);
-	g_state[2U] = get_entropy(g_state[2U]);
-	g_state[3U] = get_entropy(g_state[3U]);
+	for (UINT i = 0U; i < 13U; i++)
+	{
+		g_state[0U] = get_entropy(g_state[0U]);
+		g_state[1U] = get_entropy(g_state[1U]);
+		g_state[2U] = get_entropy(g_state[2U]);
+		g_state[3U] = get_entropy(g_state[3U]);
+	}
 }
 
 static void rnd_update(void)
