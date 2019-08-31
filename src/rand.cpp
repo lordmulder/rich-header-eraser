@@ -62,9 +62,12 @@ static void rnd_seed(void)
 
 static void rnd_update(void)
 {
-	g_state[0U] += 1U; mix_function(g_state[2U], g_state[1U], g_state[0U]);
-	g_state[1U] += 1U; mix_function(g_state[0U], g_state[2U], g_state[1U]);
-	g_state[2U] += 1U; mix_function(g_state[1U], g_state[0U], g_state[2U]);
+	static const DWORD Q[3U] = { 0x1, 0xD5277EBF, 0x3FD98BEC };
+	for (UINT i = 0U; i < 3U; i++)
+	{
+		g_state[0U] += Q[i];
+		mix_function(g_state[2U], g_state[1U], g_state[0U]);
+	}
 }
 
 static DWORD _rnd_next(void)
