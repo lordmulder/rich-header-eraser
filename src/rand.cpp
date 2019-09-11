@@ -11,9 +11,6 @@
 #include <limits.h>
 
 #define RESEED_COUNT 999983U
-#define MIX(X,Y,Z) \
-	a += (X); b += (Y); c += (Z); \
-	mix_function(a, b, c);
 
 static CRITICAL_SECTION g_mutex;
 static DWORD g_state[6U] = { 0x4F5B7CF1, 0x599531DE, 0xBC360195, 0x2933231A, 0x62DFEC75, 0x959E2017 };
@@ -41,15 +38,20 @@ static DWORD combine(const DWORD a, const DWORD b)
 
 static DWORD get_entropy(const DWORD seed)
 {
-	DWORD a = 0x48FA2D3C, b = 0xC6A1AB02, c = seed;
-	FILETIME time; LARGE_INTEGER perf;
-	MIX((DWORD_PTR)&a, GetCurrentProcessId(), GetCurrentThreadId())
+	LARGE_INTEGER perf;
+	FILETIME time;
+	DWORD a = 0x7869F30D + GetCurrentProcessId();
+	DWORD b = 0xD8D35B4B + GetCurrentThreadId();
+	DWORD c = seed + ((DWORD)((ULONG_PTR)&seed));
+	mix_function(a, b, c);
 	for (UINT i = 0U; i < 97U; i++)
 	{
+		a += GetTickCount();
 		GetSystemTimeAsFileTime(&time);
-		MIX(GetTickCount(), time.dwHighDateTime, time.dwLowDateTime)
+		b += combine(time.dwHighDateTime, time.dwLowDateTime);
 		QueryPerformanceCounter(&perf);
-		MIX(~GetTickCount(), perf.HighPart, perf.LowPart)
+		c += combine(perf.HighPart, perf.LowPart);
+		mix_function(a, b, c);
 	}
 	return c;
 }
