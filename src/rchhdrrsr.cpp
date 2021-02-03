@@ -19,12 +19,14 @@ static const WORD VERSION_MAJOR = VER_RCHHDRRSR_MAJOR;
 static const WORD VERSION_MINOR = (10U * VER_RCHHDRRSR_MINOR_HI) + VER_RCHHDRRSR_MINOR_LO;
 static const WORD VERSION_PATCH = VER_RCHHDRRSR_PATCH;
 
-static const DWORD DOS_STUB_LEN = 0x80;
+static const DWORD DOS_HEADER_LEN = 0x40;
 
 static const int EXIT_NO_RICH_HEADER = 1;
 static const int EXIT_INVALID_FILE   = 2;
 static const int EXIT_FILE_IO_ERROR  = 3;
 static const int EXIT_INVALID_ARGS   = 4;
+
+#define LSHIFT(X,Y) ((((DWORD)(X)) & 0xFF) << (Y))
 
 #define CLEANUP_RETURN(X) \
 	destroy_mapping(&mapping); \
@@ -38,14 +40,19 @@ static BOOL check_hdr_mz(const BYTE *const data, const DWORD size)
 
 static BOOL check_hdr_pe(const BYTE *const data, const DWORD size, DWORD *const pe_offset_out)
 {
-	*pe_offset_out = data[0x3C] | (data[0x3D] << 8) | (data[0x3E] << 16) | (data[0x3E] << 24);
-	return (*pe_offset_out >= 0x40) && (*pe_offset_out < size - 3U) && (!memcmp(data + (*pe_offset_out), "PE\0\0", 4));
+	*pe_offset_out = LSHIFT(data[0x3C], 0) | LSHIFT(data[0x3D], 8) | LSHIFT(data[0x3E], 16) | LSHIFT(data[0x3F], 24);
+	if ((*pe_offset_out >= DOS_HEADER_LEN) && (*pe_offset_out < size - 3U))
+	{
+		return (!memcmp(data + (*pe_offset_out), "PE\0\0", 4));
+	}
+	return FALSE;
 }
 
 static BOOL locate_rich_footer(const BYTE *const data, const DWORD pe_offset, DWORD *const footer_offset_out)
 {
+	const DWORD limit = pe_offset - 7U;
 	BOOL found = FALSE;
-	for (DWORD off = DOS_STUB_LEN; off < pe_offset - 7U; ++off)
+	for (DWORD off = DOS_HEADER_LEN; off < limit; ++off)
 	{
 		if (!memcmp(data + off, "Rich", 4))
 		{
@@ -59,7 +66,7 @@ static BOOL locate_rich_footer(const BYTE *const data, const DWORD pe_offset, DW
 static BOOL locate_rich_header(const BYTE *const data, const DWORD foor_offset, DWORD *const header_offset_out)
 {
 	BOOL found = FALSE;
-	for (DWORD off = foor_offset - 4U; off >= DOS_STUB_LEN; --off)
+	for (DWORD off = foor_offset - 4U; off >= DOS_HEADER_LEN; --off)
 	{
 		if (((data[off + 0U] ^ data[foor_offset + 4U]) == 'D') && ((data[off + 1U] ^ data[foor_offset + 5U]) == 'a') &&
 			((data[off + 2U] ^ data[foor_offset + 6U]) == 'n') && ((data[off + 3U] ^ data[foor_offset + 7U]) == 'S'))
@@ -109,7 +116,7 @@ static int process_file(const WCHAR *const file_name, const BOOL zero)
 		return EXIT_FILE_IO_ERROR;
 	}
 
-	con_puts(L"OK\nScanning for PE header... ");
+	con_puts(L"OK\nScanning for MZ/PE headers... ");
 
 	if (!check_hdr_mz(mapping.view, mapping.size))
 	{
@@ -129,14 +136,14 @@ static int process_file(const WCHAR *const file_name, const BOOL zero)
 	DWORD rich_footer = 0U;
 	if (!locate_rich_footer(mapping.view, pe_offset, &rich_footer))
 	{
-		con_puts(L"Failed!\n\nFile does *not* seem to contain Rich (DanS) header. Already erased or not created by M$?\n\n");
+		con_puts(L"Failed!\n\nFile does *not* contain Rich (DanS) header. Already erased or not created by M$?\n\n");
 		CLEANUP_RETURN(EXIT_NO_RICH_HEADER)
 	}
 
 	DWORD rich_header = 0U;
 	if (!locate_rich_header(mapping.view, rich_footer, &rich_header))
 	{
-		con_puts(L"Failed!\n\nFound a Rich header, but 'DanS' signature could *not* be decoded!\n\n");
+		con_puts(L"Failed!\n\nIncomplete or corrupted Rich (DanS) header. Signature could *not* be decoded!\n\n");
 		CLEANUP_RETURN(EXIT_NO_RICH_HEADER)
 	}
 

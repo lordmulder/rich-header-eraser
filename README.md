@@ -7,7 +7,7 @@ Contents
 
 This is a simple tool to remove the "Rich" header from binaries (EXE or DLL files) created by M$ development tools.
 
-For more details on that ***undocumented*** header, please see here:
+For more details on that ***undocumented*** header, please see here:  
 https://www.ntcore.com/files/richsign.htm
 
 
